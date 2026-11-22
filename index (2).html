@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart AC Monitoring — thir.my.id</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b1120;
+      color: #f8fafc;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Layar Loading Awal -->
+  <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0b1120]">
+    <div class="w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+    <p class="text-slate-400 text-sm tracking-wide">Memeriksa sesi Smart AC...</p>
+  </div>
+
+  <!-- Layar Login PIN -->
+  <div id="login-screen" class="hidden min-h-screen flex items-center justify-center px-4">
+    <div class="glass-card w-full max-w-md rounded-2xl p-8 shadow-2xl">
+      <div class="flex items-center justify-center w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-400 mx-auto mb-5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-center text-white mb-1">Smart AC Control</h1>
+      <p class="text-slate-400 text-sm text-center mb-6">Masukkan PIN akses untuk melanjutkan</p>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <input type="password" id="pin-input" placeholder="Masukkan PIN Akses" required
+            class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700 text-white text-center text-lg tracking-widest focus:outline-none focus:border-sky-500 transition" />
+        </div>
+        <p id="login-error" class="hidden text-rose-400 text-xs text-center">PIN salah. Silakan coba lagi.</p>
+        <button type="submit"
+          class="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold transition shadow-lg shadow-sky-500/20">
+          Masuk ke Dasbor
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dasbor Utama -->
+  <div id="main-dashboard" class="hidden flex-1 flex flex-col">
+    <!-- Navbar -->
+    <header class="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-30">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="font-semibold text-white tracking-tight">Smart AC Monitoring</span>
+          <span class="hidden sm:inline-block text-xs px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">Ruang Utama</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <span id="clock-display" class="text-xs text-slate-400 hidden sm:inline"></span>
+          <button id="logout-btn"
+            class="text-xs px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 text-slate-300 border border-slate-700 transition">
+            Keluar
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Konten Utama -->
+    <main class="max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6 flex-1">
+      <!-- Kartu Telemetri -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glass-card rounded-2xl p-5">
+          <p class="text-xs text-slate-400 mb-1">Suhu Ruangan</p>
+          <div class="flex items-baseline gap-2">
+            <span id="room-temp" class="text-3xl font-bold text-white">24.5</span>
+            <span class="text-sm text-sky-400 font-medium">°C</span>
+          </div>
+          <p class="text-xs text-emerald-400 mt-2">Stabil &bull; Optimal</p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5">
+          <p class="text-xs text-slate-400 mb-1">Kelembapan</p>
+          <div class="flex items-baseline gap-2">
+            <span id="room-humidity" class="text-3xl font-bold text-white">58</span>
+            <span class="text-sm text-sky-400 font-medium">%</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Rentang nyaman 45–65%</p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5">
+          <p class="text-xs text-slate-400 mb-1">Daya Listrik</p>
+          <div class="flex items-baseline gap-2">
+            <span id="power-usage" class="text-3xl font-bold text-white">410</span>
+            <span class="text-sm text-amber-400 font-medium">W</span>
+          </div>
+          <p id="power-status" class="text-xs text-amber-400 mt-2">Kompresor Aktif</p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5">
+          <p class="text-xs text-slate-400 mb-1">Status Unit</p>
+          <div class="flex items-center justify-between mt-1">
+            <span id="unit-status-text" class="text-2xl font-bold text-emerald-400">MENYALA</span>
+            <button id="power-toggle"
+              class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition">
+              Matikan
+            </button>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">Koneksi IoT Terhubung</p>
+        </div>
+      </div>
+
+      <!-- Kontrol AC & Grafik -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Panel Kontrol -->
+        <div class="glass-card rounded-2xl p-6 flex flex-col justify-between space-y-6">
+          <div>
+            <h2 class="text-base font-semibold text-white mb-4">Kontrol Suhu & Mode</h2>
+
+            <!-- Pengatur Target Suhu -->
+            <div class="bg-slate-900/70 rounded-2xl p-5 border border-slate-800 text-center mb-5">
+              <p class="text-xs text-slate-400 mb-2">Target Suhu</p>
+              <div class="flex items-center justify-center gap-6">
+                <button id="temp-down"
+                  class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xl font-bold transition">-</button>
+                <div>
+                  <span id="target-temp" class="text-4xl font-bold text-sky-400">22</span>
+                  <span class="text-lg text-slate-400">°C</span>
+                </div>
+                <button id="temp-up"
+                  class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xl font-bold transition">+</button>
+              </div>
+            </div>
+
+            <!-- Pilihan Mode -->
+            <div class="mb-5">
+              <p class="text-xs text-slate-400 mb-2">Mode Operasi</p>
+              <div class="grid grid-cols-3 gap-2" id="mode-buttons">
+                <button data-mode="Cool" class="mode-btn py-2 rounded-xl text-xs font-medium bg-sky-500 text-slate-950">Cool</button>
+                <button data-mode="Dry" class="mode-btn py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Dry</button>
+                <button data-mode="Fan" class="mode-btn py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Fan</button>
+              </div>
+            </div>
+
+            <!-- Kecepatan Kipas -->
+            <div>
+              <p class="text-xs text-slate-400 mb-2">Kecepatan Kipas</p>
+              <div class="grid grid-cols-4 gap-2" id="fan-buttons">
+                <button data-fan="Auto" class="fan-btn py-2 rounded-xl text-xs font-medium bg-sky-500 text-slate-950">Auto</button>
+                <button data-fan="Low" class="fan-btn py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Low</button>
+                <button data-fan="Med" class="fan-btn py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Med</button>
+                <button data-fan="High" class="fan-btn py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">High</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grafik Riwayat Suhu -->
+        <div class="glass-card rounded-2xl p-6 lg:col-span-2 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-semibold text-white">Grafik Telemetri Suhu Real-Time</h2>
+              <p class="text-xs text-slate-400">Pembaruan otomatis setiap 3 detik</p>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300">Live</span>
+          </div>
+          <div class="relative flex-1 min-h-[240px]">
+            <canvas id="tempChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const SESSION_KEY = 'smart_ac_auth_v1';
+    const CORRECT_PIN = '250606';
+
+    let isAcOn = true;
+    let targetTemp = 22;
+    let roomTemp = 24.5;
+    let humidity = 58;
+    let tempChart = null;
+
+    // Pengecekan Sesi Saat Halaman Dimuat
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        document.getElementById('loading-screen').classList.add('hidden');
+        if (localStorage.getItem(SESSION_KEY) === 'true') {
+          showDashboard();
+        } else {
+          document.getElementById('login-screen').classList.remove('hidden');
+        }
+      }, 600);
+    });
+
+    // Proses Login PIN
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const pin = document.getElementById('pin-input').value.trim();
+      const errorEl = document.getElementById('login-error');
+
+      if (pin === CORRECT_PIN) {
+        localStorage.setItem(SESSION_KEY, 'true');
+        errorEl.classList.add('hidden');
+        document.getElementById('pin-input').value = '';
+        document.getElementById('login-screen').classList.add('hidden');
+        showDashboard();
+      } else {
+        errorEl.classList.remove('hidden');
+      }
+    });
+
+    // Proses Keluar
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem(SESSION_KEY);
+      document.getElementById('main-dashboard').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+    });
+
+    function showDashboard() {
+      document.getElementById('main-dashboard').classList.remove('hidden');
+      if (!tempChart) initChart();
+      updateClock();
+    }
+
+    // Jam Real-time
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-display').textContent = now.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }) + ' WIB';
+    }
+    setInterval(updateClock, 1000);
+
+    // Kontrol Daya ON/OFF
+    document.getElementById('power-toggle').addEventListener('click', () => {
+      isAcOn = !isAcOn;
+      const statusText = document.getElementById('unit-status-text');
+      const toggleBtn = document.getElementById('power-toggle');
+      const powerUsage = document.getElementById('power-usage');
+      const powerStatus = document.getElementById('power-status');
+
+      if (isAcOn) {
+        statusText.textContent = 'MENYALA';
+        statusText.className = 'text-2xl font-bold text-emerald-400';
+        toggleBtn.textContent = 'Matikan';
+        toggleBtn.className = 'px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition';
+        powerUsage.textContent = '410';
+        powerStatus.textContent = 'Kompresor Aktif';
+        powerStatus.className = 'text-xs text-amber-400 mt-2';
+      } else {
+        statusText.textContent = 'MATI';
+        statusText.className = 'text-2xl font-bold text-slate-500';
+        toggleBtn.textContent = 'Nyalakan';
+        toggleBtn.className = 'px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-semibold text-xs transition';
+        powerUsage.textContent = '3';
+        powerStatus.textContent = 'Mode Siaga (Standby)';
+        powerStatus.className = 'text-xs text-slate-400 mt-2';
+      }
+    });
+
+    // Kontrol Target Suhu
+    document.getElementById('temp-down').addEventListener('click', () => {
+      if (targetTemp > 16) {
+        targetTemp--;
+        document.getElementById('target-temp').textContent = targetTemp;
+      }
+    });
+
+    document.getElementById('temp-up').addEventListener('click', () => {
+      if (targetTemp < 30) {
+        targetTemp++;
+        document.getElementById('target-temp').textContent = targetTemp;
+      }
+    });
+
+    // Pilihan Mode
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode-btn').forEach(b => {
+          b.className = 'mode-btn py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700';
+        });
+        btn.className = 'mode-btn py-2 rounded-xl text-xs font-medium bg-sky-500 text-slate-950';
+      });
+    });
+
+    // Pilihan Kecepatan Kipas
+    document.querySelectorAll('.fan-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.fan-btn').forEach(b => {
+          b.className = 'fan-btn py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700';
+        });
+        btn.className = 'fan-btn py-2 rounded-xl text-xs font-medium bg-sky-500 text-slate-950';
+      });
+    });
+
+    // Grafik & Simulasi Telemetri
+    function initChart() {
+      const ctx = document.getElementById('tempChart').getContext('2d');
+      const initialLabels = Array.from({ length: 10 }, (_, i) => `-${(9 - i) * 3}d`);
+      const initialData = [25.2, 25.0, 24.9, 24.8, 24.8, 24.7, 24.6, 24.6, 24.5, 24.5];
+
+      tempChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: initialLabels,
+          datasets: [{
+            label: 'Suhu Ruangan (°C)',
+            data: initialData,
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.12)',
+            borderWidth: 2.5,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(148, 163, 184, 0.08)' },
+              ticks: { color: '#94a3b8', font: { size: 11 } }
+            },
+            y: {
+              min: 16,
+              max: 32,
+              grid: { color: 'rgba(148, 163, 184, 0.08)' },
+              ticks: { color: '#94a3b8', font: { size: 11 } }
+            }
+          }
+        }
+      });
+
+      setInterval(() => {
+        if (!tempChart) return;
+        const diff = isAcOn ? (targetTemp - roomTemp) * 0.08 : (29 - roomTemp) * 0.05;
+        const noise = (Math.random() - 0.5) * 0.15;
+        roomTemp = Number((roomTemp + diff + noise).toFixed(1));
+        humidity = Math.min(75, Math.max(45, humidity + Math.round((Math.random() - 0.5) * 2)));
+
+        document.getElementById('room-temp').textContent = roomTemp.toFixed(1);
+        document.getElementById('room-humidity').textContent = humidity;
+
+        if (isAcOn) {
+          const watts = Math.round(350 + Math.max(0, (roomTemp - targetTemp) * 45));
+          document.getElementById('power-usage').textContent = watts;
+        }
+
+        const timeLabel = new Date().toLocaleTimeString('id-ID', { minute: '2-digit', second: '2-digit' });
+        tempChart.data.labels.shift();
+        tempChart.data.labels.push(timeLabel);
+        tempChart.data.datasets[0].data.shift();
+        tempChart.data.datasets[0].data.push(roomTemp);
+        tempChart.update('none');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
