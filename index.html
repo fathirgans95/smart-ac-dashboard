@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart AC Dashboard — thir.my.id</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #090d16;
+      color: #f1f5f9;
+    }
+    .glass-card {
+      background: rgba(17, 25, 40, 0.78);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 30px rgba(6, 182, 212, 0.2);
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- Layar Pemeriksaan Sesi (Session Loader) -->
+  <div id="session-loader" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#090d16] transition-opacity duration-500">
+    <div class="relative flex items-center justify-center">
+      <div class="h-16 w-16 animate-spin rounded-full border-4 border-cyan-500/20 border-t-cyan-400"></div>
+      <div class="absolute h-8 w-8 rounded-full bg-cyan-500/20 animate-pulse"></div>
+    </div>
+    <p class="mt-5 text-sm font-medium tracking-wide text-slate-300">Memeriksa sesi Smart AC...</p>
+    <span class="mt-1 text-xs text-slate-500">dashboard.thir.my.id</span>
+  </div>
+
+  <!-- Login Modal (Jika Sesi Belum Aktif) -->
+  <div id="login-screen" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-[#090d16] px-4">
+    <div class="glass-card w-full max-w-md rounded-2xl p-8 shadow-2xl">
+      <div class="mb-6 text-center">
+        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-400">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m0-18l-4 4m4-4l4 4M3 12h18M3 12l4-4m-4 4l4 4m14-4l-4-4m4 4l-4 4"/>
+          </svg>
+        </div>
+        <h1 class="text-xl font-bold text-white">Smart AC Control</h1>
+        <p class="mt-1 text-xs text-slate-400">Masuk untuk mengakses kontrol <span class="text-cyan-400 font-medium">thir.my.id</span></p>
+      </div>
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">PIN / Kode Akses Perangkat</label>
+          <input type="password" id="pin-input" placeholder="Masukkan PIN (default: 1234)" required
+            class="w-full rounded-xl border border-slate-700/80 bg-slate-900/80 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none">
+        </div>
+        <p id="login-error" class="hidden text-xs text-rose-400">PIN salah. Gunakan 1234 untuk demo.</p>
+        <button type="submit"
+          class="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 hover:opacity-95 transition">
+          Masuk ke Dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Konten Utama Dashboard -->
+  <div id="main-dashboard" class="hidden max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+    
+    <!-- Header / Navbar -->
+    <header class="glass-card rounded-2xl px-6 py-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-white">Smart AC Dashboard</h1>
+            <span class="rounded-full bg-cyan-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-cyan-400 border border-cyan-500/20">
+              thir.my.id
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">IoT Climate Control & Telemetry • ESP32 Node</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span class="text-xs font-medium text-emerald-400">Broker Online</span>
+        </div>
+        <button onclick="logoutSession()" title="Keluar Sesi"
+          class="rounded-xl border border-slate-700/80 bg-slate-800/60 px-3.5 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition">
+          Keluar
+        </button>
+      </div>
+    </header>
+
+    <!-- Grid Utama -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Panel Kontrol Suhu Utama (Kiri) -->
+      <div class="lg:col-span-5 glass-card glow-cyan rounded-2xl p-6 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Unit Utama</span>
+            <h2 class="text-base font-bold text-white">AC Kamar Utama</h2>
+          </div>
+          <!-- Tombol Power -->
+          <button id="power-btn" onclick="togglePower()"
+            class="flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/30 transition">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9"/>
+            </svg>
+            <span id="power-label">ON</span>
+          </button>
+        </div>
+
+        <!-- Dial Suhu -->
+        <div class="my-8 flex flex-col items-center justify-center">
+          <div id="temp-ring" class="relative flex h-52 w-52 flex-col items-center justify-center rounded-full border-4 border-cyan-500/40 bg-slate-900/70 shadow-inner transition-all">
+            <span class="text-xs font-medium text-slate-400">Target Suhu</span>
+            <div class="flex items-start mt-1">
+              <span id="target-temp" class="text-6xl font-extrabold tracking-tighter text-white">22</span>
+              <span class="text-2xl font-bold text-cyan-400 mt-1">°C</span>
+            </div>
+            <span id="ac-status-text" class="mt-2 rounded-full bg-cyan-500/15 px-3 py-0.5 text-[11px] font-medium text-cyan-300">
+              Pendinginan Aktif
+            </span>
+          </div>
+
+          <!-- Tombol Tambah / Kurang Suhu -->
+          <div class="mt-6 flex items-center gap-6">
+            <button onclick="changeTemp(-1)"
+              class="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-800/90 text-xl font-bold text-white hover:border-cyan-500 hover:text-cyan-400 active:scale-95 transition">
+              −
+            </button>
+            <span class="text-xs text-slate-400">16°C — 30°C</span>
+            <button onclick="changeTemp(1)"
+              class="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-800/90 text-xl font-bold text-white hover:border-cyan-500 hover:text-cyan-400 active:scale-95 transition">
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode & Kecepatan Kipas -->
+        <div class="space-y-4 border-t border-slate-800 pt-5">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-2">Mode Operasi</label>
+            <div class="grid grid-cols-4 gap-2" id="mode-buttons">
+              <button onclick="setMode('Cool', this)" class="mode-btn rounded-xl bg-cyan-500/20 border border-cyan-500 py-2 text-xs font-semibold text-cyan-300">Cool</button>
+              <button onclick="setMode('Dry', this)" class="mode-btn rounded-xl bg-slate-800/60 border border-slate-700/80 py-2 text-xs font-medium text-slate-400 hover:text-white">Dry</button>
+              <button onclick="setMode('Fan', this)" class="mode-btn rounded-xl bg-slate-800/60 border border-slate-700/80 py-2 text-xs font-medium text-slate-400 hover:text-white">Fan</button>
+              <button onclick="setMode('Auto', this)" class="mode-btn rounded-xl bg-slate-800/60 border border-slate-700/80 py-2 text-xs font-medium text-slate-400 hover:text-white">Auto</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-2">Kecepatan Kipas (Fan Speed)</label>
+            <div class="grid grid-cols-4 gap-2" id="fan-buttons">
+              <button onclick="setFan('Low', this)" class="fan-btn rounded-xl bg-slate-800/60 border border-slate-700/80 py-2 text-xs font-medium text-slate-400 hover:text-white">Low</button>
+              <button onclick="setFan('Med', this)" class="fan-btn rounded-xl bg-cyan-500/20 border border-cyan-500 py-2 text-xs font-semibold text-cyan-300">Med</button>
+              <button onclick="setFan('High', this)" class="fan-btn rounded-xl bg-slate-800/60 border border-slate-700/80 py-2 text-xs font-medium text-slate-400 hover:text-white">High</button>
+              <button onclick="setFan('Auto', this)" class="fan-btn rounded-xl bg-slate-800/60 border border-slate-700/80 py-2 text-xs font-medium text-slate-400 hover:text-white">Auto</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel Sensor & Grafik (Kanan) -->
+      <div class="lg:col-span-7 flex flex-col gap-6">
+        
+        <!-- Kartu Telemetri Sensor -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="glass-card rounded-2xl p-5">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-medium">Suhu Ruangan</span>
+              <span class="text-cyan-400 text-xs font-bold">DHT22</span>
+            </div>
+            <p class="mt-3 text-3xl font-extrabold text-white"><span id="room-temp">24.6</span><span class="text-base font-semibold text-slate-400">°C</span></p>
+            <p class="mt-1 text-[11px] text-emerald-400">Stabil • Selisih +2.6°C</p>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-medium">Kelembapan</span>
+              <span class="text-blue-400 text-xs font-bold">RH%</span>
+            </div>
+            <p class="mt-3 text-3xl font-extrabold text-white"><span id="room-humidity">58</span><span class="text-base font-semibold text-slate-400">%</span></p>
+            <p class="mt-1 text-[11px] text-slate-400">Ideal (45% – 65%)</p>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-medium">Estimasi Daya</span>
+              <span class="text-amber-400 text-xs font-bold">LIVE</span>
+            </div>
+            <p class="mt-3 text-3xl font-extrabold text-white"><span id="power-usage">385</span><span class="text-base font-semibold text-slate-400"> W</span></p>
+            <p class="mt-1 text-[11px] text-slate-400">Kompresor Inverter</p>
+          </div>
+        </div>
+
+        <!-- Grafik Suhu Real-Time -->
+        <div class="glass-card rounded-2xl p-6 flex-1 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-bold text-white">Grafik Pemantauan Suhu Ruangan</h3>
+              <p class="text-xs text-slate-400">Pembaruan telemetri otomatis per 5 detik</p>
+            </div>
+            <span class="rounded-lg bg-slate-800 px-2.5 py-1 text-[11px] font-mono text-cyan-400">
+              wss://mqtt.thir.my.id
+            </span>
+          </div>
+          <div class="relative h-56 w-full">
+            <canvas id="tempChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Log Aktivitas Perintah -->
+        <div class="glass-card rounded-2xl p-5">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Log Perintah IR / MQTT Terbaru</h3>
+          <div id="activity-log" class="space-y-2 text-xs font-mono text-slate-300 max-h-28 overflow-y-auto">
+            <div class="flex justify-between text-slate-400">
+              <span>[SYSTEM] Sesi terverifikasi pada dashboard.thir.my.id</span>
+              <span>Baru saja</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isPowerOn = true;
+    let targetTemp = 22;
+    let currentMode = 'Cool';
+    let currentFan = 'Med';
+
+    // Simulasi Pengecekan Sesi seperti halaman referensi
+    window.addEventListener('DOMContentLoaded', () => {
+      const loader = document.getElementById('session-loader');
+      const loginScreen = document.getElementById('login-screen');
+      const dashboard = document.getElementById('main-dashboard');
+
+      setTimeout(() => {
+        loader.classList.add('opacity-0');
+        setTimeout(() => {
+          loader.classList.add('hidden');
+          if (localStorage.getItem('smart_ac_auth') === 'true') {
+            dashboard.classList.remove('hidden');
+            initChart();
+          } else {
+            loginScreen.classList.remove('hidden');
+          }
+        }, 400);
+      }, 1100);
+    });
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const pin = document.getElementById('pin-input').value;
+      if (pin === '1234') {
+        localStorage.setItem('smart_ac_auth', 'true');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-dashboard').classList.remove('hidden');
+        initChart();
+        addLog('Login berhasil. Terhubung ke node Smart AC.');
+      } else {
+        document.getElementById('login-error').classList.remove('hidden');
+      }
+    });
+
+    function logoutSession() {
+      localStorage.removeItem('smart_ac_auth');
+      location.reload();
+    }
+
+    function togglePower() {
+      isPowerOn = !isPowerOn;
+      const btn = document.getElementById('power-btn');
+      const label = document.getElementById('power-label');
+      const ring = document.getElementById('temp-ring');
+      const statusText = document.getElementById('ac-status-text');
+      const powerUsage = document.getElementById('power-usage');
+
+      if (isPowerOn) {
+        btn.className = 'flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/30 transition';
+        label.textContent = 'ON';
+        ring.classList.replace('border-slate-700', 'border-cyan-500/40');
+        statusText.textContent = `Mode ${currentMode} Aktif`;
+        statusText.className = 'mt-2 rounded-full bg-cyan-500/15 px-3 py-0.5 text-[11px] font-medium text-cyan-300';
+        powerUsage.textContent = '385';
+        addLog('Perintah IR dikirim: POWER ON');
+      } else {
+        btn.className = 'flex items-center gap-2 rounded-full bg-slate-700 px-4 py-2 text-xs font-bold text-slate-300 transition';
+        label.textContent = 'OFF';
+        ring.classList.replace('border-cyan-500/40', 'border-slate-700');
+        statusText.textContent = 'Unit Mati (Standby)';
+        statusText.className = 'mt-2 rounded-full bg-slate-800 px-3 py-0.5 text-[11px] font-medium text-slate-400';
+        powerUsage.textContent = '2';
+        addLog('Perintah IR dikirim: POWER OFF');
+      }
+    }
+
+    function changeTemp(delta) {
+      if (!isPowerOn) return;
+      targetTemp = Math.min(30, Math.max(16, targetTemp + delta));
+      document.getElementById('target-temp').textContent = targetTemp;
+      addLog(`Target suhu diubah ke ${targetTemp}°C`);
+    }
+
+    function setMode(mode, el) {
+      if (!isPowerOn) return;
+      currentMode = mode;
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        b.className = 'mode-btn rounded-xl bg-slate-800/60 border border-slate-700/80 py-2 text-xs font-medium text-slate-400 hover:text-white';
+      });
+      el.className = 'mode-btn rounded-xl bg-cyan-500/20 border border-cyan-500 py-2 text-xs font-semibold text-cyan-300';
+      document.getElementById('ac-status-text').textContent = `Mode ${mode} Aktif`;
+      addLog(`Mode operasi diubah ke ${mode.toUpperCase()}`);
+    }
+
+    function setFan(fan, el) {
+      if (!isPowerOn) return;
+      currentFan = fan;
+      document.querySelectorAll('.fan-btn').forEach(b => {
+        b.className = 'fan-btn rounded-xl bg-slate-800/60 border border-slate-700/80 py-2 text-xs font-medium text-slate-400 hover:text-white';
+      });
+      el.className = 'fan-btn rounded-xl bg-cyan-500/20 border border-cyan-500 py-2 text-xs font-semibold text-cyan-300';
+      addLog(`Kecepatan kipas diatur ke ${fan.toUpperCase()}`);
+    }
+
+    function addLog(msg) {
+      const logBox = document.getElementById('activity-log');
+      const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const row = document.createElement('div');
+      row.className = 'flex justify-between border-b border-slate-800/60 pb-1';
+      row.innerHTML = `<span><span class="text-cyan-400">[ESP32]</span> ${msg}</span><span class="text-slate-500">${time}</span>`;
+      logBox.prepend(row);
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('tempChart').getContext('2d');
+      const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+      gradient.addColorStop(0, 'rgba(6, 182, 212, 0.35)');
+      gradient.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
+
+      const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['10:00', '10:05', '10:10', '10:15', '10:20', '10:25'],
+          datasets: [{
+            label: 'Suhu Ruangan (°C)',
+            data: [26.2, 25.8, 25.3, 24.9, 24.7, 24.6],
+            borderColor: '#22d3ee',
+            backgroundColor: gradient,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#22d3ee'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { size: 11 } } },
+            y: { min: 18, max: 30, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', font: { size: 11 } } }
+          }
+        }
+      });
+
+      // Simulasi pembaruan sensor real-time setiap 5 detik
+      setInterval(() => {
+        const roomTempEl = document.getElementById('room-temp');
+        const current = parseFloat(roomTempEl.textContent);
+        const diff = isPowerOn ? (targetTemp - current) * 0.08 : 0.05;
+        const nextTemp = +(current + diff + (Math.random() * 0.1 - 0.05)).toFixed(1);
+        roomTempEl.textContent = nextTemp;
+
+        const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        chart.data.labels.push(now);
+        chart.data.datasets[0].data.push(nextTemp);
+        if (chart.data.labels.length > 10) {
+          chart.data.labels.shift();
+          chart.data.datasets[0].data.shift();
+        }
+        chart.update('none');
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
